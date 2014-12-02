@@ -1,0 +1,209 @@
+@font-face {
+  font-family: 'Pontano Sans';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Pontano Sans'), local('PontanoSans-Regular'), url('http://themes.googleusercontent.com/static/fonts/pontanosans/v1/gTHiwyxi6S7iiHpqAoiE3KRDOzjiPcYnFooOUGCOsRk.woff') format('woff');
+}
+
+/* http://meyerweb.com/eric/tools/css/reset/ 
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+	-webkit-font-smoothing: antialiased;
+	-moz-font-smoothing: antialiased;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+/* Velib */
+h1 {
+	font-family: Arial;
+	font-weight: 100;
+	font-size: 54px;
+	letter-spacing: -0.07em;
+	margin: 20px 0;
+}
+
+h2 {
+	font: 22px Arial, sans-serif;
+	font-weight: bold;
+	margin: 12px 0;
+}
+
+td {
+	vertical-align: middle;
+	padding: 5px;
+}
+
+td img {
+	border: 1px solid black;
+}
+
+#intro, #left-pane, #right-pane {
+	font: 16px 'Helvetica Neue', sans-serif;
+	float: left;
+	width: 36%;
+}
+
+#left-pane {
+	clear: left;
+	margin-right: 4%;
+}
+
+#intro p, #left-pane p, #right-pane p {
+	margin-bottom: 6px;
+}
+
+#loader {
+	margin:0 auto;
+	width: 200px;
+	text-align: center;
+	background-color: #FCFCDD;
+	font-family: sans-serif;
+}
+
+#studio {
+	margin: 20px auto;
+	width: 1280px;
+}
+
+#chart {
+	position: relative;
+	float: left;
+	width: 960px;
+	overflow: hidden;
+	margin: 20px 0;
+	box-shadow: 0 1px 5px 0px black;
+	border: 10px solid white;
+}
+
+#timepick, #geo {
+	float: left;
+	margin: 20px 0 0 20px;
+	width: 180px;
+	padding: 10px;
+	box-shadow: 0 1px 5px 0px black;
+	border: 10px solid white;
+	background: white;
+	font-family: Georgia;
+}
+
+#details {
+	position: absolute;
+	margin: 20px;
+	width: 180px;
+	padding: 10px;
+	box-shadow: 0 0 20px 0px black;
+	border: 10px solid white;
+	background: white;
+	font-family: Georgia;
+	visibility: hidden;
+}
+
+#calendar {
+	width: 168px;
+	margin: 0 auto;
+	height: 8em;
+	position: relative;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	
+	overflow: hidden;
+}
+
+#time {
+	width: 168px;
+	margin-bottom: 10px;
+}
+
+#slider {
+	width: 180px;
+}
+
+#month {
+	text-align: center;
+	margin: 0 auto;
+}
+
+#days {
+	width: 168px;
+}
+
+.day {
+	float: left;
+	width: 24px;
+	cursor: pointer;
+	text-align: center;
+}
+
+#moment {
+	text-align: center;
+}
+
+.arrow {
+	top: 0px;
+	width: 10px;
+	text-align: center;
+	position: absolute;
+	cursor: pointer;
+}
+
+#detail-num {
+	font-weight: 700;
+}
+
+#detail-bonus, #detail-dispo, #detail-libre, #detail-total, #detail-arrdt {
+	float: right;
+}
+
+.mail:before {
+	content: "cyril.gantzer";
+}
+
+.mail:after {
+	content: "gmail.com";
+}

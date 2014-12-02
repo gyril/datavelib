@@ -1,0 +1,803 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Vélib - a visual experiment</title>
+		<script src="http://d3js.org/d3.v2.js"></script>
+		<script src="http://maps.googleapis.com/maps/api/js?key=AIzaSyBf3w1oLorXuldfRNdQt_x-l5mwCQ3bsUg&sensor=false"></script>
+		<link href="./styles.css" rel="stylesheet" type="text/css" />
+		<!-- <script src="/socket.io/socket.io.js"></script>
+		<script>
+		  var socket = io.connect('http://ks393157.kimsufi.com:8008');
+		</script> -->
+		<script type="text/javascript">
+			String.prototype.toUpLo = function () { return this.charAt(0).toUpperCase() + this.slice(1).toLowerCase(); }
+			
+			var Util = {
+				debut: new Date(),
+				timestamp: Math.floor(new Date().getTime()/1000),
+				year: new Date().getFullYear(),
+				month: new Date().getMonth(),
+				day: new Date().getDate(),
+				hour: new Date().getHours(),
+				minute: new Date().getMinutes(),
+				
+				e: 960/(2.480224080865348-2.222438264495304),
+				m: [],
+				colors: [[212,228,237],[66,146,198],[8,48,107]],
+				months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+				
+				compose: function (val, func, exp) {
+					if(exp == 0)
+						return val;
+					else if(exp == 1)
+						return func(val);
+						
+					return Util.compose(func(val), func, exp-1);
+				},
+				
+				stop: function() {
+					Util.duree = new Date().getTime() - Util.debut.getTime();
+					console.log(Util.duree);
+				},
+				
+				loading: function () {
+					d3.select("div#studio").style("display", "none");
+					d3.select("div#loader").style("display", "block");
+				},
+				
+				loaded: function() {
+					d3.select("div#loader").style("display", "none");
+					d3.select("div#studio").style("opacity", 0).style("display", "block").transition().duration(1000).style("opacity", 1);
+				},
+				
+				timestamptodate: function() {
+					var date = new Date(Util.timestamp*1000);
+					Util.year = date.getFullYear();
+					Util.month = date.getMonth();
+					Util.day = date.getDate();
+					Util.hour = date.getHours();
+					Util.minute = date.getMinutes();
+					
+					Util.displaymonth();
+					Util.displaytime();
+				},
+				
+				displaymonth: function() {
+					if(Util.month < 0) {
+						Util.month = 11;
+						Util.year--;
+					} else if (Util.month > 11) {
+						Util.month = 0;
+						Util.year++;
+					}
+					
+					var premier = new Date(Util.year, Util.month, 1).getDay();
+					var duree = new Date(Util.year, Util.month+1, 0).getDate();
+					if(premier == 0)
+						premier = 7;
+	
+				    var monthValue = document.getElementById("month");
+					monthValue.innerHTML = Util.months[Util.month]+" "+Util.year;
+					
+					var days = "";
+					for (var i=1; i<premier; i++)
+						days +='<div class="day"> </div>';
+					for(var i=1; i<=duree; i++)
+						days += '<div class="day" onclick="Util.pickdate('+i+')">'+i+'</div>';
+					document.getElementById("days").innerHTML = days;
+					Util.displaytime();
+				},
+				
+				pickdate: function(date) {
+					Util.day = date;
+					Util.displaytime();
+				},
+				
+				displaytime: function() {
+					var slider = document.getElementById("slider");
+					slider.value = (60*Util.hour + Util.minute) / 14.4;
+					
+					var hour = Util.hour.toString().length == 1 ? "0"+Util.hour : Util.hour,
+						minute= Util.minute.toString().length == 1 ? "0"+Util.minute : Util.minute;
+					
+					document.getElementById("moment").innerHTML = Util.day+"/"+(Util.month+1)+"/"+Util.year.toString()[2]+Util.year.toString()[3]+" at "+hour + ":" + minute;
+				},
+				
+				picktime: function(time) {
+					var hour = Math.floor(time*24/100);
+				    var minute = Math.floor((time*24/100-hour)*60);
+				
+				    if(hour==24) {
+				        hour = 23;
+				        minute = 59;
+				    }
+				    
+				    Util.hour = hour;
+				    Util.minute = minute;
+				    Util.displaytime();
+				},
+				
+				fetching: function() {
+					Util.xhr = true;
+					d3.select("div#fetch").style("opacity", 1);
+				},
+				
+				fetched: function() {
+					Util.xhr = false;
+					d3.select("div#fetch").style("opacity", 0);
+				},
+				
+				geocode: function(addr)	{
+					if(typeof addr == "undefined")
+						addr = document.getElementById("geo-addr").value;
+						
+					var coords = [];
+					var geocoder = new google.maps.Geocoder();
+					geocoder.geocode(
+						{
+							address: addr,
+							region: 'no'
+						}, function (res, statuts) {
+						  console.log(res[0].geometry.viewport.ca.b);
+						  console.log(res[0].geometry.viewport.ea.b);
+						  coords = gps(res[0].geometry.viewport.ca.b, res[0].geometry.viewport.ea.b);
+						  var x = coords[0]+6,
+						      y = coords[1]-6;
+						  position.data([[x, y]]).attr("cx", function(d) { return d[0]; }).attr("cy", function(d) { return d[1]; }).attr("r", 40).transition().duration(500).attr("r", 3);
+						  
+						  var prox = d3.values(reg).sort(function(a,b) {
+						  	return Math.sqrt(Math.pow(a.coords[0]-x, 2)+Math.pow(a.coords[1]-y, 2)) - Math.sqrt(Math.pow(b.coords[0]-x, 2)+Math.pow(b.coords[1]-y, 2));
+						  });
+						  
+						  var closest = prox[0],
+						  	  free,
+						  	  available;
+						  
+						  var i = 0, j = 0;
+						  do {
+						  	free = prox[i];
+						  } while (prox[i].free == 0);
+						 
+						  do {
+						  	available = prox[j];
+						  } while (prox[j].available == 0);
+						 
+						  console.log([closest, free, available]);
+					});
+				},
+				
+				xhr: false,
+				
+				selection: false,
+				
+				zoommode: false,
+				
+				togglezoom: function() {
+					if(!Util.zoommode) {
+						svg.selectAll("path").attr("transform", null);
+						svg.selectAll("circle").attr("transform", null);
+						svg.selectAll("text").attr("transform", null);
+						
+						d3.select("#chart").style("cursor", "crosshair").on("mousedown", Zoom.start);
+						d3.select("button#zoom").text("Exit zoom mode");
+					} else {
+						d3.select("#chart").style("cursor", "default").on("mousedown", null);
+						d3.select("button#zoom").text("Enter zoom mode");
+					}
+					Util.zoommode = !Util.zoommode;
+				}
+			};
+			
+			var Zoom = {
+				w: Util.e*(2.480224080865348-2.222438264495304),
+	    		h: Util.e*(48.91508160115182-48.795772971485285)*1.3,
+	    		scale: 1,
+			
+				ab: [0,0],
+				cd: [0,0],
+				rect: [0,0,0,0],
+				
+				start: function(e) {
+					d3.select("#chart").on("mousemove", Zoom.area).on("mouseup", Zoom.end);
+					Zoom.ab = d3.mouse(document.getElementById("chart"));
+				},
+				
+				area: function(e) {
+					Zoom.cd = d3.mouse(document.getElementById("chart"));
+					var x = Zoom.cd[0] - Zoom.ab[0],
+						y = Zoom.cd[1] - Zoom.ab[1],
+						ro = Zoom.w/Zoom.h,
+						r = 0;
+					
+					if(x/y > ro) {
+						x = (x*y > 0) ? ro*y : -1*ro*y;
+					} else if(x/y < ro) {
+						y = (x*y > 0) ? x/ro : -1*x/ro;
+					}
+					
+					Zoom.cd = [ x + Zoom.ab[0], y + Zoom.ab[1] ]; 
+					
+					if(x>0 && y>0)
+						r = "";
+					else if (x<0 && y>0)
+						r = "rotate(180,"+Zoom.ab[0]+","+Zoom.ab[1]+"), translate(0, -"+Math.abs(y)+")";
+					else if (x<0 && y<0)
+						r = "rotate(180,"+Zoom.ab[0]+","+Zoom.ab[1]+")";
+					else r = "rotate(180,"+Zoom.ab[0]+","+Zoom.ab[1]+"), translate(-"+Math.abs(x)+",0)";;
+					
+					zoomzone.attr("x", Zoom.ab[0]).attr("y", Zoom.ab[1]).attr("transform", r).attr("width", Math.abs(x)).attr("height", Math.abs(y));
+				},
+				
+				end: function(e) {
+					d3.select("#chart").on("mousemove", null).on("mouseup", null);
+					zoomzone.attr("height", 0).attr("width", 0);
+					Util.togglezoom();
+					Zoom.scale = Zoom.w/Math.abs(Zoom.ab[0]-Zoom.cd[0]);
+					Zoom.rect = [Math.min(Zoom.ab[0], Zoom.cd[0]), Math.min(Zoom.ab[1], Zoom.cd[1]), Math.max(Zoom.ab[0], Zoom.cd[0]), Math.max(Zoom.ab[1], Zoom.cd[1])];
+					var transform = "scale("+Zoom.scale+"), translate(-"+Zoom.rect[0]+",-"+Zoom.rect[1]+")";
+					
+					svg.selectAll("path").attr("transform", transform);
+					svg.selectAll("circle").attr("transform", transform);
+					svg.selectAll("text").attr("transform", transform);
+				}
+			}
+		</script>
+		<script type="text/javascript">
+		
+		  var _gaq = _gaq || [];
+		  _gaq.push(['_setAccount', 'UA-32466125-1']);
+		  _gaq.push(['_trackPageview']);
+		
+		  (function() {
+		    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+		    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+		    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		  })();
+		
+		</script>
+	</head>
+	<body>
+		<div id="studio">
+			<h1>Vélib network visualization</h1>
+			<div id="intro">
+				<p>This map shows the last available snapshot of the Vélib network. Each station is represented by a cell containing the points that are closest to it. Cells colors show how empty, or full, a station is : white cells indicate empty stations, while dark blue cells indicate filled stations. A black dot marks a bonus station: your account is credited with 15 extra minutes that you could spend when the regular 30 free minuets are over. </p>
+				<p>You can pick another date with the date picker and load another snapshot, or hover your mosue over a cell to inspect the data of the related station.</p>
+				<p><span style="font-style: italic; font-size: 0.9em;">Nota bene: My dataset only spans from the end of March, 2012, to today. If you have relevant data from prior dates, please contact me at <span class="mail">@</span></span></p>
+			</div>
+			<div id="chart">
+				
+			</div>
+			<div id="timepick">
+				<div id="calendar">
+			        <span class="arrow" style="left:0px" onclick="Util.month--; Util.displaymonth();"> < </span>
+			        <div id="month"></div>
+			        <span onclick="Util.month++; Util.displaymonth();" style="right:0px" class="arrow"> > </span>
+					<div id="days"></div>
+				</div>
+				<div id="time">
+					<input id="slider" type="range" />
+					<div id="moment">12:00</div>
+				</div>
+
+	
+				<button style="width: 100%; height: 2.5em;" onclick="loadsnapshot('custom')">GO</button>
+				<button style="width: 22%;" onclick="loadsnapshot('-1d')">-1 day</button>
+				<button style="width: 22%; margin-left: 2%;" onclick="loadsnapshot('-1h')">-1 hour</button>
+				<button style="width: 22%; margin-left: 0%;" onclick="loadsnapshot('+1h')">+1 hour</button>
+				<button style="width: 22%; margin-left: 2%;" onclick="loadsnapshot('+1d')">+1 day</button>
+				<div id="fetch" style="opacity: 0;">.</div>
+				<!-- <button style="width: 100%;" id="zoom" onclick="Util.togglezoom()">Enter zoom mode</button> -->
+			</div>
+			<div id="details">
+				<div style="margin-bottom: 10px;">Station n°<span id="detail-num">#</span></div>
+				<div>Arrondissement <span id="detail-arrdt"> </span> </div>
+				<div>Available bikes <span id="detail-dispo"> </span> </div>
+				<div>Free spots <span id="detail-libre"> </span> </div>
+				<div>Total spots <span id="detail-total"> </span> </div>
+				<div>Bonus <span id="detail-bonus"> </span> </div>
+				<br>
+				<div style="min-height: 3em;"><div id="detail-addr"> </div><div id="detail-city"> </div></div>
+			</div>
+			<div id="geo">
+				<div style="margin-bottom: 10px;">Find a station</div>
+				<button style="width: 100%;" onclick="alert('Your browser does not allow geolocating')">Around me</button>
+				<div style="text-align: center; font-size: 0.9em; font-style: italic;">or</div>
+				<input type="text" id="geo-addr" style="width: 97%" onkeydown="if (event.keyCode == 13) document.getElementById('geo-lookup').click()"/>
+				<button style="width: 100%;" id="geo-lookup" onclick="Util.geocode()">Custom location</button>
+				<div id="geo-res"> </div>
+			</div>
+			<div style="clear: both; color: #666; font: 14px sans-serif; padding: 40px;">Built with <a href="http://nodejs.org">nodejs</a> and <a href="http://d3js.org">d3js</a>.</div>
+		</div>
+		<div id="loader">
+			Loading...
+		</div>
+		<script type="text/javascript">
+			(function() {
+				setInterval(function() {
+					var t = d3.select("div#fetch").text();
+					switch (t.length) {
+						case 1:
+							d3.select("div#fetch").text("..");
+							break;
+						case 2:
+							d3.select("div#fetch").text("...");
+							break;
+						case 3:
+							d3.select("div#fetch").text("....");
+							break;
+						default:
+							d3.select("div#fetch").text(".");
+					}
+				}, 500);
+			})();
+			
+			function loadsnapshot(option) {
+				var timestamp;
+				
+				switch(option) {
+					case "-1h":
+						timestamp = Util.timestamp - 3600;
+						break;
+					case "+1h":
+						timestamp = Util.timestamp + 3600;
+						break;
+					case "-1d":
+						timestamp = Util.timestamp - 86400;
+						break;
+					case "+1d":
+						timestamp = Util.timestamp + 86400;
+						break;
+						
+					case "custom":
+						var date = new Date();
+						var year = Util.year;
+						var month = Util.month;
+						var day = Util.day;
+						var hour = Util.hour;
+						var minute = Util.minute;
+						if(isNaN(parseInt(hour)) || isNaN(parseInt(minute)) || hour < 0 || hour > 23 || minute < 0 || minute > 59)
+							return;
+						date.setYear(year);
+						date.setMonth(month);
+						date.setDate(day);
+						date.setHours(hour, minute);
+						timestamp = Math.floor(date.getTime()/1000);
+						console.log(timestamp);
+						break;
+					default:
+						return;
+						break;
+				}
+				
+				if ((new Date().getTime())/1000 - timestamp > 0 && !Util.xhr) {
+					Util.timestamp = timestamp;
+					loadreport(Util.timestamp);
+					Util.fetching();
+					Util.timestamptodate();
+					//socket.emit('report', {'timestamp': Util.timestamp});
+					//Util.setpicker(new Date(Util.timestamp*1000));
+				} else return;
+			}
+			
+			function loadreport(timestamp) {
+				var before = "?before=";
+				before += (typeof timestamp == 'undefined') ? "0" : timestamp;
+				
+				d3.json("./report.json"+before, trace);
+			}
+			
+			function trace(data) {
+				for(var i=0; i<data.length; i++) {
+					var station = data[i]['station'];
+		    			if(typeof reg[station] != 'undefined') {
+		    				reg[station]['free'] = data[i]['free'];
+		    				reg[station]['available'] = data[i]['available'];
+		    				reg[station]['total'] = data[i]['total'];
+		    				reg[station]['timestamp'] = data[i]['timestamp'];
+		    			}
+		    		}
+		    		
+		    		cellules.selectAll("path")
+		    		    .data(d3.values(reg))
+		    		   .transition()
+		    		     .duration(1000)
+		    		     .attr("fill", function(d, i) { return ratio2color(taux(d.free, d.available)); })
+		    		     .attr("stroke", function(d, i) { return ratio2color(taux(d.free, d.available)); });
+		    		
+		    		cellules.selectAll("circle")
+		    			.data(d3.values(reg))
+		    		   .transition()
+		    		   	 .duration(1000)
+		    		   	 .attr("r", function(d) { return d.bonus+1; })
+		    		   	 .attr("fill", function(d) { return d.bonus > 0 ? "black" : ratio2color(taux(d.free, d.available), 15); });
+		    		     
+		    		if(Util.selection)
+		    			click(Util.selection);
+		    		
+		    		console.log("done");
+		    		Util.fetched();
+			}
+			
+			/* socket.on('response', function (data) {
+				trace(data);
+			});*/
+			
+			Util.loading();
+			Util.displaymonth();
+			Util.displaytime();
+			document.getElementById("slider").addEventListener("change", function() { Util.picktime(this.value);}, false);
+				
+			var svg = d3.select("#chart")
+				  .append("svg")
+				    .attr("width", Zoom.w)
+				    .attr("height", Zoom.h);
+			
+			var cellules = svg.append("g");
+			var selection = svg.append("path").attr("stroke", "black").attr("fill", "none");
+			var position = svg.append("circle").data([0,0]).attr("stroke", "white").attr("r", 3).attr("fill", "none");
+			var zoomzone = svg.append("rect").attr("stroke", "black").attr("fill", "none");
+				    
+			var vertices = [],
+				segments = [],
+				communes = {},
+				liste = [],
+				arrondissements = [],
+				cells = [],
+				reg = {};
+			
+	    	d3.json("./coords.json", function(data) { 
+	    		for(var i=0; i<data.length; i++) {
+	    			var station = data[i][2];
+	    			
+	    			reg[station] = {
+	    				"numero": station,
+	    				"coords": gps(data[i][0], data[i][1]),
+	    				"bonus": data[i][3],
+	    				"name": data[i][4].substr(data[i][4].indexOf(" - ")+3),
+	    				"arrdt": arrdt(station),
+	    				"city": data[i][4].indexOf("(") == -1 ? "PARIS" : data[i][4].substr(data[i][4].indexOf("(")+1).slice(0, -1),
+	    				"addr": data[i][5].substr(0, data[i][5].indexOf(" -")).toLowerCase(),
+	    				"free": 0,
+	    				"available": 0,
+	    				"total": 0,
+	    				"timestamp": 0
+	    			}
+	    			
+	    			var commune = reg[station]['city'] != "PARIS" ? reg[station]['city'] : reg[station]['arrdt'] == "1" ? "1er" : reg[station]['arrdt']+"ème";
+	    			if (typeof communes[commune] == "undefined")
+	    				communes[commune] = [reg[station]];
+	    			else communes[commune].push(reg[station]);
+				}
+				
+				for(var i in reg) {
+					vertices.push([reg[i]['coords'][0], reg[i]['coords'][1]]);
+				}
+	    		
+	    		cells = d3.geom.voronoi(vertices);
+	    		
+	    		var j = 0;
+	    		
+	    		for(var i in reg) {
+	    			reg[i]['polygon'] = cells[j];
+	    			j++;
+	    		}
+	    		
+	    		for(var commune in communes) {
+	    			if(communes[commune].length < 3)
+	    				delete communes[commune];
+	    			
+	    			else {
+	    				var coo = [];
+						for(var i in communes[commune])
+							coo.push([communes[commune][i]['coords'][0],communes[commune][i]['coords'][1]]);
+					
+						var low = d3.min(coo);
+						coo[coo.indexOf(low)] = coo[0];
+						coo[0] = low;
+						
+						coo.sort(function(a,b) {
+							if(a == coo[0] || b == coo[0])
+								return -1;
+							
+							if((a[1]-coo[0][1])/(a[0]-coo[0][0]) > (b[1]-coo[0][1])/(b[0]-coo[0][0]))
+								return 1;
+							
+							else return -1;
+						});
+					
+						function left(a,b,c) {
+							if( (b[1]-a[1])*(c[0]-a[0]) - (c[1]-a[1])*(b[0]-a[0]) > 0) 
+								return true;
+							return false;
+						}
+					
+						pol = [coo[0], coo[1], coo[2]];
+					
+						for(var i=3; i<coo.length; i++) {
+							while(pol.length > 2 && left(pol[pol.length-2],pol[pol.length-1],coo[i]))
+								pol.pop();
+							pol.push(coo[i]);
+						}
+					
+						pol[pol.length] = coo[0];
+					
+						/*for(var i=1, l=pol.length; i<l; i++)
+										svg.append("path")
+										  .attr("stroke", "white")
+										  .attr("stroke-width", 2)
+										  .attr("d", "M" + pol[i-1][1] +","+ pol[i-1][0] + "L" + pol[i][1] +","+ pol[i][0] + "Z")*/
+					
+					
+						var area = 0;
+						for(var i=0; i < pol.length -1; i++)
+					 		area += pol[i][1] * pol[i+1][0] - pol[i+1][1] * pol[i][0];
+						
+						area *= 1/2;
+						var abs = 0,
+							ord = 0;
+					
+						for(var i=0; i < pol.length -1; i++) {
+					 		abs += (pol[i][0]+pol[i+1][0]) * (pol[i+1][0] * pol[i][1] - pol[i][0] * pol[i+1][1]);
+					 		ord += (pol[i][1]+pol[i+1][1]) * (pol[i+1][0] * pol[i][1] - pol[i][0] * pol[i+1][1]);
+						}
+						
+						abs *= 1/(6*area);
+						ord *= 1/(6*area);
+					
+						//svg.append("text").attr("x", abs).attr("style", "text-anchor: middle").attr("y", ord).text(commune);
+						liste.push({"commune":commune, "c": abs, "d": ord, "x": abs, "y": ord});
+	    			}
+	    		}
+	    		
+	    		
+	    		cellules.selectAll("path")
+				    .data(d3.values(reg))
+				  .enter().append("path")
+				    .attr("fill", "white")
+				    .attr("stroke", "black")
+				    .attr("d", function(d) { return "M" + d.polygon.join("L") + "Z"; })
+				    .on("mouseover", click);
+				    //.on("click", click)
+				    //.on("mouseover", hover)
+				    //.on("mouseout", out);
+				    
+				cellules.selectAll("circle")
+				    .data(d3.values(reg))
+				  .enter().append("circle")
+				    .attr("cx", function(d) { return d.coords[0]; })
+				    .attr("cy", function(d) { return d.coords[1]; })
+				    .attr("r", function(d) { return 1;});
+				    //.on("click", click);
+				
+				/*liste.push({"commune":""});
+				var force = d3.layout.force()
+				    .nodes(liste)
+				    .links([])
+				    .size([Zoom.w, Zoom.h])
+				    .gravity(0.01)
+				    .charge(function(d, i) {return i == liste.length-1 ? -500 : -10})
+				    .start();
+				
+				d3.select("body").on("mousemove", function(e) {
+				    Util.m = d3.mouse(document.getElementsByTagName("svg")[0]);
+				    force.resume();
+				});
+				
+				
+				var node = svg.selectAll("text.node")
+				    .data(liste)
+				  .enter().append("svg:text")
+				    .attr("x", function(d) { return d.x; })
+				    .attr("y", function(d) { return d.y; })
+				    .text(function(d) {return d.commune.toUpLo()})
+				    .attr("style", "text-anchor: middle; pointer-events: none; fill: #ffffff; font-size: 10pt; font-family: Arial; dominant-baseline: hanging; text-shadow: -1px 1px 0 #222222; opacity: 0.7;");
+				
+				force.on("tick", function(e) {
+				        var k = e.alpha * 1;
+				
+				        liste.forEach(function(o, i) {
+				                if(i==liste.length-1) {
+				                        o.y = Util.m[1];
+				                        o.x = Util.m[0];
+				                } else {
+				                        o.y += (liste[i].d - o.y)*k;
+				                        o.x += (liste[i].c - o.x)*k;
+				                }
+				        });
+				        node.attr("x", function(d) { return d.x; })
+				      .attr("y", function(d) { return d.y; });
+				});*/
+				
+				svg.selectAll("text.node")
+				    .data(liste)
+				  .enter().append("svg:text")
+				    .attr("x", function(d) { return d.c; })
+				    .attr("y", function(d) { return d.d; })
+				    .text(function(d) {return d.commune.toUpLo()})
+				    .attr("style", "text-anchor: middle; pointer-events: none; fill: #ffffff; font-size: 10pt; font-family: Arial; dominant-baseline: hanging; text-shadow: -0px 0px 0 #222222; opacity: 1;");
+				
+	    		loadreport(Util.timestamp);
+	    		//socket.emit('report', {'timestamp': Util.timestamp});
+	    		
+				Util.loaded();
+	    	});
+	    	
+			function taux(libre, dispo) {
+				if(dispo+libre == 0)
+					return -1;
+					
+				return dispo/(dispo+libre);
+			}
+			
+			function time(stamp) {
+				var date = new Date(stamp*1000);
+				var res = "le ";
+				res += date.getDate()
+					+ "/";
+				res += (date.getMonth()+1)
+					+ "/";
+				res += (date.getYear()-100)
+					+ " à ";
+				res += date.getHours()
+					+ ":";
+				res += date.getMinutes()
+					+ ":";
+				res += date.getSeconds();
+				
+				return res;
+			}
+			
+			function click(st) {
+				var data = isNaN(parseInt(st)) ? d3.select(this).data()[0] : reg[st];
+				Util.selection = data.numero;
+				d3.select("span#detail-num").text(data.numero);
+				d3.select("span#detail-arrdt").text(arrdt(data.numero)+(data.numero<2000 ? "er" : data.numero<21000 ? "ème" : ""));
+				d3.select("span#detail-dispo").text(data.available);
+				d3.select("span#detail-libre").text(data.free);
+				d3.select("span#detail-total").text(data.total);
+				d3.select("span#detail-bonus").text(data.bonus == 1 ? 'yes' : 'no').style('color', data.bonus == 1 ? ratio2color(0.5) : ratio2color(1));
+				d3.select("#detail-city").text(data.city);
+				d3.select("#detail-addr").text(data.addr);
+				selection.attr("d", "M" + data.polygon.join("L") + "Z");
+			}
+			
+			function hover() {
+				d3.select(this).style("opacity", 0.8);
+			}
+			
+			function out() {
+				d3.select(this).style("opacity", 1);
+			}
+
+			function ratio2color(r, spot) {
+				if(typeof spot == 'undefined')
+					spot = 0;
+				
+				if(r<0)
+					return "url(#hatch)";
+				
+				function lissage(ratio) {
+					return Math.asin(Math.pow(ratio, 1/2)) * 2/Math.PI;
+				}
+				
+				// ratio puissance
+				// r = Math.pow(r, 1/10);
+				
+				// ratio arcsin rond arcsin 
+				//r = Math.asin(Math.pow(      Math.asin(Math.pow(r, 1/2)) * 2/Math.PI      ,1/2)) * 2/Math.PI;
+				
+				// ratio arcsin
+				//r = Math.asin(Math.pow(r, 1/2)) * 2/Math.PI;
+				
+				// test compose arcsin
+				r = Util.compose(r, lissage, 2);
+				
+				//gradient
+				//var colors = [[40,50,140],[70,220,110],[210,45,45]];
+				//var colors = [[72,94,161],[87,245,252],[250,250,90],[245,147,77],[211,70,53]];
+				//var colors = [[255,255,255],[127,127,127],[0,0,0]];
+				colors = Util.colors;
+				
+				if(r==1)
+					return "rgb("+colors[colors.length-1]+")";
+				
+				var ech = colors.length - 1,
+					alpha = Math.floor(ech*r),
+					d = ech*r - alpha,
+					rgb = [Math.round(colors[alpha][0]+d*(colors[alpha+1][0]-colors[alpha][0]) - spot), Math.round(colors[alpha][1]+d*(colors[alpha+1][1]-colors[alpha][1]) - spot), Math.round(colors[alpha][2]+d*(colors[alpha+1][2]-colors[alpha][2]) - spot)],
+					c = "rgb("+rgb+")";
+
+				return c;
+			}
+			
+			function gps(lat, lng) {
+				return [(lng-2.2223)*Util.e, Zoom.h-(lat-48.7957)*Util.e*1.3];
+			}
+			
+			function arrdt(stat)	{
+				switch (stat) {
+					case "901":
+						return 19;
+						break;
+					case "903":
+						return 12;
+						break;
+					case "904":
+						return 7;
+						break;
+					case "905":
+						return 12;
+						break;
+					case "906":
+						return 10;
+						break;
+					case "907":
+						return 12;
+						break;
+					case "908":
+						return 11;
+						break;
+					default:
+						var arrdt = parseInt(stat.slice(0, -3));
+						return arrdt > 20 ? "N/A" : arrdt;
+				}
+			}
+			
+			// legacy code ; reusable ?
+			/*
+			function toggleArrdt() {
+				var arrdts = d3.selectAll("[arrdt=yes]");
+				if(arrdts.style("display") != "none")
+					arrdts.style("display", "none");
+				else arrdts.style("display", "block");
+			}
+			
+			function drawArrdts() {
+				
+				for(var i=0, l=cells.length; i<l; i++) {
+					for(var j=0, m=cells[i]['length']; j<m; j++) {
+						var k = j<m-1 ? j+1 : 0;
+						try {
+							var segment = new Segment(cells[i][j][0], cells[i][j][1], cells[i][k][0], cells[i][k][1], stations[i][3]);
+						} catch(e) {
+							console.log(i);
+						}
+						var n = 0,
+							bord = false;
+						while(n<segments.length && bord===false) {
+							if(segment.x1 == segments[n].x1 && segment.x2 == segments[n].x2 && segment.y1 == segments[n].y1 && segment.y2 == segments[n].y2 && segment.arr != segments[n].arr) {
+								bord = true;
+								if((segment.arr<21 && segments[n].arr>20) || (segment.arr>20 && segments[n].arr<21))
+									segment.width = 3;
+							}
+							n++;
+						}
+						if(bord)
+							arrondissements.push(segment)
+						else segments.push(segment);
+					}
+				}
+				
+				for(var i=0, l=arrondissements.length; i<l; i++)
+					svg.append("path")
+					  .attr("stroke", "white")
+					  .attr("stroke-width", arrondissements[i]['width'])
+					  .attr("d", "M" + arrondissements[i]['x1'] +","+ arrondissements[i]['y1'] + "L" + arrondissements[i]['x2'] +","+ arrondissements[i]['y2'] + "Z")
+					  .attr("display", "none")
+					  .attr("arrdt", "yes");
+				
+				Util.stop();
+			}*/
+		</script>
+		<svg>
+		    <defs>
+		        <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse">
+		            <line x1="0" y1="10" x2="10" y2="0" style="stroke:rgb(8,48,107);stroke-width:4;"/>
+			    	<line x1="5" y1="15" x2="15" y2="5" style="stroke:rgb(8,48,107);stroke-width:4;"/>
+			    	<line y1="5" x1="-5" y2="-5" x2="5" style="stroke:rgb(8,48,107);stroke-width:4;"/>            
+			    </pattern>
+		    </defs>
+		</svg>
+	</body>
+</html>
